@@ -1,0 +1,4 @@
+window.MAP_ANIMATION_SETTINGS = {
+    DEFAULT_SPEED: 1,
+    MAX_SPEED: 4
+};
