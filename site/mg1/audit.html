@@ -3,16 +3,19 @@ body{background:#11151b;color:#e7ebf0;font:15px system-ui;margin:24px}header{max
 const root=document.querySelector('#issue-filters');
 const boxes=[...root.querySelectorAll('[data-issue-filter]')];
 const fixedVisibility=root.querySelector('#fixed-visibility');
+const falsePositiveVisibility=root.querySelector('#false-positive-visibility');
 const area=root.querySelector('#audit-area');
 const storageKey='mg1-audit-filters-v1';
 const hidePalette=root.querySelector('#hide-palette');
 let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
 for(const box of boxes)box.checked=saved.categories?.[box.value]!==false;
 if(fixedVisibility){const mode=saved.fixedVisibility??(saved.showFixed===false?'hide':'show');if(['show','hide','only'].includes(mode))fixedVisibility.value=mode;}
+if(falsePositiveVisibility&&['show','hide','only'].includes(saved.falsePositiveVisibility))falsePositiveVisibility.value=saved.falsePositiveVisibility;
 if(hidePalette)hidePalette.checked=typeof saved.hidePalette==='boolean'?saved.hidePalette:hidePalette.defaultChecked;
 if([...area.options].some(option=>option.value===saved.area))area.value=saved.area;
-function save(){const state={area:area.value,categories:Object.fromEntries(boxes.map(box=>[box.value,box.checked]))};if(fixedVisibility)state.fixedVisibility=fixedVisibility.value;if(hidePalette)state.hidePalette=hidePalette.checked;try{localStorage.setItem(storageKey,JSON.stringify(state));}catch{}}
-function filter(){const selected=new Set(boxes.filter(box=>box.checked).map(box=>box.value));let n=0;for(const article of document.querySelectorAll('article[data-issues]')){const matching=article.dataset.issues.split(' ').filter(id=>selected.has(id));const hasVisibleIssue=matching.some(id=>{const fixed=article.querySelector('[data-fix-issue="'+id+'"]')?.checked===true;const mode=fixedVisibility?.value??'show';return mode==='show'||(mode==='hide'?!fixed:fixed);});article.hidden=!hasVisibleIssue||(hidePalette&&hidePalette.checked&&article.dataset.palette==='1')||(area.value&&!article.dataset.areas.split(' ').includes(area.value));if(!article.hidden)n++;}document.querySelector('#issue-count').textContent=n+' shown';}
+function save(){const state={area:area.value,categories:Object.fromEntries(boxes.map(box=>[box.value,box.checked]))};if(fixedVisibility)state.fixedVisibility=fixedVisibility.value;if(falsePositiveVisibility)state.falsePositiveVisibility=falsePositiveVisibility.value;if(hidePalette)state.hidePalette=hidePalette.checked;try{localStorage.setItem(storageKey,JSON.stringify(state));}catch{}}
+function matchesStatus(mode,checked){return mode==='show'||(mode==='hide'?!checked:checked);}
+function filter(){const selected=new Set(boxes.filter(box=>box.checked).map(box=>box.value));let n=0;for(const article of document.querySelectorAll('article[data-issues]')){const matching=article.dataset.issues.split(' ').filter(id=>selected.has(id));const hasVisibleIssue=matching.some(id=>{const fixed=article.querySelector('[data-fix-issue="'+id+'"]')?.checked===true;const falsePositive=article.querySelector('[data-false-positive-issue="'+id+'"]')?.checked===true;return matchesStatus(fixedVisibility?.value??'show',fixed)&&matchesStatus(falsePositiveVisibility?.value??'show',falsePositive);});article.hidden=!hasVisibleIssue||(hidePalette&&hidePalette.checked&&article.dataset.palette==='1')||(area.value&&!article.dataset.areas.split(' ').includes(area.value));if(!article.hidden)n++;}document.querySelector('#issue-count').textContent=n+' shown';}
 
 root.addEventListener('change',()=>{save();filter();});
 root.addEventListener('click',event=>{const button=event.target.closest('[data-filter-all]');if(button){for(const box of boxes)box.checked=button.dataset.filterAll==='1';save();filter();}});
